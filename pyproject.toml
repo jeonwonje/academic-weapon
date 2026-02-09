@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "academic-weapon"
+version = "0.1.0"
+description = "NUS Canvas sync + LLM-powered Telegram academic assistant"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "openai>=1.12",
+    "python-telegram-bot[job-queue]>=21.0",
+    "PyMuPDF>=1.24",
+    "python-docx>=1.1",
+    "python-pptx>=0.6",
+    "beautifulsoup4>=4.12",
+    "python-dotenv>=1.0",
+    "tiktoken>=0.6",
+]
+
+[project.scripts]
+sync-canvas = "src.canvas.sync:main"
+academic-weapon = "src.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
