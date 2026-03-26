@@ -13,7 +13,7 @@ build/
 venv/
 env/
 
-# Data (synced Canvas files)
+# Data (synced Canvas files + nested git repos)
 data/
 
 # Logs

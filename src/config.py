@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(default="")
     telegram_chat_id: str = Field(default="")
 
+    # ── GitHub ───────────────────────────────────────────────────────────
+    github_owner: str = Field(default="")
+    github_commit_prefix: str = Field(default="[canvas-sync]")
+
     # ── Storage ─────────────────────────────────────────────────────────
     data_dir: Path = Field(default=Path("./data"))
 

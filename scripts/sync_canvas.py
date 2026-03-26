@@ -15,7 +15,9 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.canvas.sync import main  # noqa: E402
+import asyncio  # noqa: E402
+
+from src.github.orchestrator import sync_and_push  # noqa: E402
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(sync_and_push())

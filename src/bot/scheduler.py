@@ -23,17 +23,19 @@ async def _scheduled_sync_and_digest(context) -> None:
 
     logger.info("⏰ Scheduled sync + digest starting…")
 
-    # 1. Sync Canvas
+    # 1. Sync Canvas + push to GitHub
     try:
-        from src.canvas.sync import run_sync
+        from src.github.orchestrator import sync_and_push
 
-        summaries = await run_sync()
+        result = await sync_and_push()
+        summaries = result.sync_summaries
         total_downloaded = sum(
             len(s.get("files", {}).get("downloaded", []))
             for s in summaries
             if isinstance(s.get("files"), dict)
         )
-        logger.info("Sync complete: %d files downloaded across %d courses", total_downloaded, len(summaries))
+        push_msg = f" | GitHub: {result.push_ok} pushed, {result.push_skipped} skipped, {result.push_failed} failed"
+        logger.info("Sync complete: %d files downloaded across %d courses%s", total_downloaded, len(summaries), push_msg)
     except Exception as exc:
         logger.error("Scheduled sync failed: %s", exc)
         try:

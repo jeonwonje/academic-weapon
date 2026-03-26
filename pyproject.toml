@@ -19,11 +19,13 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "python-dotenv>=1.0",
     "tiktoken>=0.6",
+    "textual>=0.50",
 ]
 
 [project.scripts]
 sync-canvas = "src.canvas.sync:main"
 academic-weapon = "src.main:main"
+canvas-tui = "src.tui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

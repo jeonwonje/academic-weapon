@@ -75,7 +75,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"/summary `<course>` — Course overview\n"
         f"/files `<course>` — Recent files\n"
         f"/ask `<question>` — Ask anything about your courses\n"
-        f"/sync — Pull latest data from Canvas\n"
+        f"/sync — Pull latest data from Canvas + push to GitHub\n"
+        f"/push — Push to GitHub without re-syncing\n"
+        f"/repos — Show GitHub repo status\n"
         f"/help — Show this message",
     )
 
@@ -323,15 +325,15 @@ async def handle_module_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /sync — manually trigger Canvas sync."""
+    """Handle /sync — manually trigger Canvas sync + GitHub push."""
     await update.message.reply_text("🔄 Starting Canvas sync… this may take a few minutes.")
     try:
-        from src.canvas.sync import run_sync
+        from src.github.orchestrator import sync_and_push
 
-        summaries = await run_sync()
+        result = await sync_and_push()
 
         lines = ["✅ *Sync complete!*\n"]
-        for s in summaries:
+        for s in result.sync_summaries:
             course = s.get("course", "?")
             files = s.get("files", {})
             if isinstance(files, dict) and "error" not in files:
@@ -346,10 +348,60 @@ async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             else:
                 lines.append(f"  *{course}*: {files}")
 
+        if result.push_results:
+            lines.append(f"\n📤 *GitHub push:* {result.push_ok} pushed, {result.push_skipped} skipped, {result.push_failed} failed")
+            for pr in result.push_results:
+                if pr.status == "failed":
+                    lines.append(f"  ❌ {pr.course_code}: {pr.error}")
+
         await _safe_reply(update, "\n".join(lines))
     except Exception as exc:
         logger.error("Sync failed: %s", exc)
         await _safe_reply(update, f"❌ Sync failed: {exc}", parse_mode=None)
+
+
+async def cmd_push(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /push — manually trigger GitHub push without re-syncing."""
+    await update.message.reply_text("📤 Pushing to GitHub…")
+    try:
+        from src.github.pusher import push_all
+
+        results = await push_all()
+        if not results:
+            await _safe_reply(update, "ℹ️ No GitHub mappings configured. Use the TUI (`canvas-tui`) to set up repos.")
+            return
+
+        lines = ["📤 *GitHub push complete!*\n"]
+        for r in results:
+            if r.status == "ok":
+                lines.append(f"  ✅ *{r.course_code}*: {r.files_changed} files pushed")
+            elif r.status == "skipped":
+                lines.append(f"  ⏭ *{r.course_code}*: no changes")
+            else:
+                lines.append(f"  ❌ *{r.course_code}*: {r.error}")
+
+        await _safe_reply(update, "\n".join(lines))
+    except Exception as exc:
+        logger.error("Push failed: %s", exc)
+        await _safe_reply(update, f"❌ Push failed: {exc}", parse_mode=None)
+
+
+async def cmd_repos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /repos — show GitHub repo status for all configured courses."""
+    from src.github.config_manager import load_config
+
+    config = load_config()
+    if not config.mappings:
+        await _safe_reply(update, "ℹ️ No GitHub repos configured. Use the TUI (`canvas-tui`) to set up repos.")
+        return
+
+    lines = ["📦 *GitHub Repos*\n"]
+    for m in config.mappings:
+        status = "✅" if m.enabled else "⏸"
+        push_info = m.last_push_at[:10] if m.last_push_at else "Never"
+        lines.append(f"  {status} *{m.course_code}* → `{m.github_owner}/{m.github_repo}` (last push: {push_info})")
+
+    await _safe_reply(update, "\n".join(lines))
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -388,6 +440,8 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("files", cmd_files))
     app.add_handler(CommandHandler("ask", cmd_ask))
     app.add_handler(CommandHandler("sync", cmd_sync))
+    app.add_handler(CommandHandler("push", cmd_push))
+    app.add_handler(CommandHandler("repos", cmd_repos))
 
     # Plain text → treat as question
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
