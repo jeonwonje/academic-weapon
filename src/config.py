@@ -30,14 +30,6 @@ class Settings(BaseSettings):
     canvas_api_url: str = Field(default="https://canvas.nus.edu.sg")
     canvas_api_token: str = Field(default="")
 
-    # ── OpenAI ──────────────────────────────────────────────────────────
-    openai_api_key: str = Field(default="")
-    openai_model: str = Field(default="gpt-4o")
-
-    # ── Telegram ────────────────────────────────────────────────────────
-    telegram_bot_token: str = Field(default="")
-    telegram_chat_id: str = Field(default="")
-
     # ── GitHub ───────────────────────────────────────────────────────────
     github_owner: str = Field(default="")
     github_commit_prefix: str = Field(default="[canvas-sync]")
